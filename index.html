@@ -2682,11 +2682,9 @@ YANGIHAYOT MFY
         try {
           const response = await fetch(apiEndpoint(endpoint), {
             method: 'POST',
-            credentials: 'same-origin',
             headers: {
               'Authorization': `Bearer ${API_SECRET}`,
               'Content-Type': 'application/json',
-
               'Idempotency-Key': idempotencyKey
             },
             body: JSON.stringify(payload)

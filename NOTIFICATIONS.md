@@ -1,6 +1,6 @@
 # Development API integration
 
-The app must be served by its Node development server; opening the HTML directly as a file or using a static server will not provide `API_URL` or the notification proxy. The server writes the public API base URL to `/runtime-config.js` for browser login requests. Notifications go through same-origin proxy routes; the server adds `API_SECRET` when forwarding them. Never put `API_SECRET` in browser code. The backend must allow browser requests from the app's origin for login. The Node development server remains development-only and must not be exposed to a network or deployed.
+The static frontend sends login requests to `API_URL/api/auth/login` and notifications to `API_URL/api/events`, `API_URL/api/code`, and `API_URL/api/status`. The deployed backend must expose these notification endpoints to browser requests and allow the app's origin through CORS. Do not put `API_SECRET` in browser code; if the backend requires a secret, route notifications through a production server-side proxy instead. The Node server in this repository is development-only and must not be exposed to a network or deployed.
 
 Set these variables in the server process environment:
 
@@ -19,7 +19,7 @@ $env:API_SECRET = "<notification backend secret>"
 node server.js
 ```
 
-The Node server generates a fresh 32-character cryptographically random session secret on startup; it is not read from an environment variable. Existing sessions are invalidated when the server restarts. Then open `http://127.0.0.1:3001`. The server binds to loopback only. Student login calls `API_URL/api/auth/login`; notification requests are validated and forwarded to `API_URL/api/events`, `API_URL/api/code`, and `API_URL/api/status` with the server-only `API_SECRET`.
+The Node server generates a fresh 32-character cryptographically random session secret on startup; it is not read from an environment variable. Existing sessions are invalidated when the server restarts. Then open `http://127.0.0.1:3001`. The server binds to loopback only. The development server writes the public API base URL to `/runtime-config.js`, proxies student login to `API_URL/api/auth/login`, and proxies notification requests to `API_URL/api/events`, `API_URL/api/code`, and `API_URL/api/status` with the server-only `API_SECRET`.
 
 The proxy allows only the configured test lifecycle, break, and subject-module events; module metadata is limited to section/module numbers. Notification requests use an `Idempotency-Key`, and the frontend retries transient failures with the same key. Failures are shown in the app toast.
 

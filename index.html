@@ -2509,74 +2509,16 @@ YANGIHAYOT MFY
 
   <script>
     // =========================================================================
-    // GLOBAL STATE & API CONFIGURATION
-    // =========================================================================
-    // Use env API_URL for base url of backend. Fallback to empty string if undefined.
-    const API_URL = process.env.API_URL || '';
-
-    // Helper to safely combine the API_URL with route paths, preventing double slashes
-    function apiEndpoint(path) {
-      if (!API_URL) return path;
-      const base = API_URL.replace(/\/+$/, '');
-      const endpoint = path.replace(/^\/+/, '');
-      return `${base}/${endpoint}`;
-    }
-
-    // Auth & User State
-    let authToken = null;
-    let authenticatedUser = null;
-    let studentLoginPending = false;
-
-    // Hardware & UI Timers
-    let activeExamCameraStream = null;
-    let batteryListenerAttached = false;
-    let toastTimeout = null;
-    let confettiAnimFrame = null;
-    let downloadTimeout = null;
-    let examDownloadFinished = false;
-    let fullscreenToastTimeout = null;
-    let startTestDelayTimeout = null;
-    let startCodeSubmissionPending = false;
-
-    // Exam Engine State
-    let currentWizardIdx = 0;
-    let currentSectionNum = 1; // 1 = Reading and Writing, 2 = Math
-    let currentModuleNum = 1;
-    let currentQuestionIdx = 0;
-    let inCheckYourWorkView = false;
-    let testStartedNotificationSent = false;
-    let testCompletedNotificationSent = false;
-    const notifiedModuleStarts = new Set();
-    let eliminatorModeActive = true;
-    let examTimerSeconds = 32 * 60;
-    let examTimerInterval = null;
-    let timerVisible = true;
-
-    // Break State
-    let breakTimerSeconds = 10 * 60;
-    let breakTimerInterval = null;
-    let breakNotificationActive = false;
-
-    // Highlights State
-    let highlightModeActive = false;
-    let highlightTooltipTimer = null;
-    let activeHighlightEl = null;
-    let pendingSelectionRange = null;
-    let pendingSelectionContainer = null;
-    let lastUsedHighlightColor = 'yellow';
-    let justCreatedHighlight = false;
-
-    // Math/Desmos State
-    let desmosGraphingInstance = null;
-    let desmosScientificInstance = null;
-    let activeDesmosMode = 'graphing';
-    let mathCalculatorOpen = false;
-    let mathReferenceOpen = false;
-    let referenceExpanded = false;
-
-    // =========================================================================
     // REAL BATTERY STATUS API & CAMERA INDICATOR CONTROLLER
     // =========================================================================
+    let activeExamCameraStream = null;
+    let batteryListenerAttached = false;
+    const API_URL = "https://bluebook-vmqh.onrender.com";
+    function apiEndpoint(path) {
+      if (!API_URL) throw new Error('API_URL is not configured.');
+      return `${API_URL}${path}`;
+    }
+
     function updateAllBatteryDisplays(levelFraction) {
       const pct = Math.max(0, Math.min(100, Math.round(levelFraction * 100)));
       document.querySelectorAll('.real-battery-pct').forEach(el => {
@@ -2662,6 +2604,8 @@ YANGIHAYOT MFY
     const cardStreetAddress = document.getElementById('cardStreetAddress');
     const cardCityCountry = document.getElementById('cardCityCountry');
     const savedToast = document.getElementById('savedToast');
+
+    let toastTimeout = null;
 
     function closeProfileModal() {
       if (editProfileModal) editProfileModal.classList.remove('open');
@@ -2874,6 +2818,8 @@ YANGIHAYOT MFY
     // =========================================================================
     // CONGRATULATIONS SCREEN & ANIMATED CONFETTI LOGIC
     // =========================================================================
+    let confettiAnimFrame = null;
+
     function stopCongratsConfetti() {
       if (confettiAnimFrame) {
         cancelAnimationFrame(confettiAnimFrame);
@@ -2961,7 +2907,10 @@ YANGIHAYOT MFY
     // CHECK-IN WIZARD LOGIC (Steps 1 through 8)
     // =========================================================================
     const wizardSequence = [1, 2, 3, 4, 5, 6, 7, 8];
-    
+    let currentWizardIdx = 0;
+    let downloadTimeout = null;
+    let examDownloadFinished = false;
+
     function startCheckInFlow() {
       const currentName = headerFullName.textContent.trim();
       document.getElementById('confirmPersonalName').textContent = currentName;
@@ -3091,6 +3040,7 @@ YANGIHAYOT MFY
     // =========================================================================
     const startCodeBoxes = document.querySelectorAll('.start-code-box');
     const startTestBtn = document.getElementById('startTestBtn');
+    let fullscreenToastTimeout = null;
 
     function openStartCodeScreen() {
       showAppView('screenStartCode');
@@ -3153,6 +3103,8 @@ YANGIHAYOT MFY
       }
     }
 
+    let startTestDelayTimeout = null;
+    let startCodeSubmissionPending = false;
     async function handleStartTestClick() {
       const filled = Array.from(startCodeBoxes).every(b => b.value.trim().length === 1);
       if (!filled || startCodeSubmissionPending) return;
@@ -4116,6 +4068,13 @@ YANGIHAYOT MFY
     // =========================================================================
     // DESMOS CALCULATOR & REFERENCE SHEET LOGIC (SECTION 2: MATH ONLY)
     // =========================================================================
+    let desmosGraphingInstance = null;
+    let desmosScientificInstance = null;
+    let activeDesmosMode = 'graphing';
+    let mathCalculatorOpen = false;
+    let mathReferenceOpen = false;
+    let referenceExpanded = false;
+
     function ensureDesmosInitialized() {
       if (typeof window.Desmos === 'undefined') return;
       const graphEl = document.getElementById('desmosGraphingContainer');
@@ -4139,7 +4098,7 @@ YANGIHAYOT MFY
       }
     }
 
-    // Position the Math question column in a fixed right-half space when Calculator is open
+    // Position the Math question column in a fixed right-half space when Calculator is open (never resizing or shifting when stretching Calculator or opening Reference)
     function syncMathQuestionWorkspaceLayout() {
       const rightPane = document.getElementById('rightQuestionPane');
       const rightInner = document.getElementById('rightQuestionInnerContainer');
@@ -4318,6 +4277,25 @@ YANGIHAYOT MFY
     // =========================================================================
     // EXAM ENGINE STATE & FUNCTIONS (00:38 - 00:56)
     // =========================================================================
+    let currentSectionNum = 1; // 1 = Reading and Writing (27 Qs), 2 = Math (22 Qs)
+    let currentModuleNum = 1;  // 1 or 2
+    let currentQuestionIdx = 0;
+    let inCheckYourWorkView = false;
+    let testStartedNotificationSent = false;
+    let testCompletedNotificationSent = false;
+    const notifiedModuleStarts = new Set();
+    let eliminatorModeActive = true;
+    let examTimerSeconds = 32 * 60;
+    let examTimerInterval = null;
+    let timerVisible = true;
+    let highlightModeActive = false;
+    let highlightTooltipTimer = null;
+    let activeHighlightEl = null;
+    let pendingSelectionRange = null;
+    let pendingSelectionContainer = null;
+    let lastUsedHighlightColor = 'yellow';
+    let justCreatedHighlight = false;
+
     function getDropletSvgIcon(color) {
       const fillMap = {
         yellow: '#e3be24',
@@ -4401,7 +4379,6 @@ YANGIHAYOT MFY
         closeHighlightEditor();
       }
     }
-
     // Global mouseup handler inside the exam workspace for both Highlight Mode ON and OFF (SECTION 1 ONLY)
     document.addEventListener('mouseup', (e) => {
       if (currentSectionNum !== 1) return; // Math section has NO highlighting
@@ -4910,7 +4887,7 @@ YANGIHAYOT MFY
       }
     }
 
-    // Exact 1-physical-pixel bitmap generator for unanswered dashed squares
+    // Exact 1-physical-pixel bitmap generator for unanswered dashed squares so all 4 sides and all boxes have 2 L-shaped corners + 5 evenly spaced inner dashes
     const dashedBoxUrlCache = {};
 
     function getExactDashedBoxDataUrl(boxSize = 32, dashCount = 5) {
@@ -4925,6 +4902,9 @@ YANGIHAYOT MFY
       const ctx = canvas.getContext('2d');
       ctx.fillStyle = '#222222';
 
+      // Exact Bluebook 32px grid ratio:
+      // 2 corner legs (2.5u each) + 5 inner dashes (3.0u each) + 6 gaps (2.0u each) = 32.0u
+      // For legend (dashCount === 3 on 16px): 2 corner legs (2u) + 3 dashes (2.4u) + 4 gaps (1.2u) = 16.0u
       const totalUnits = dashCount === 5 ? 32 : 16;
       const cornerUnit = dashCount === 5 ? 2.5 : 2.0;
       const dashUnit = dashCount === 5 ? 3.0 : 2.4;
@@ -4934,23 +4914,31 @@ YANGIHAYOT MFY
       const c = Math.max(2, Math.round(cornerUnit * scale));
       const dashLenPx = Math.max(2, Math.round(dashUnit * scale));
 
-      // 4 symmetrical L-shaped corners
+      // 4 symmetrical L-shaped corners (each 1 physical pixel thick)
+      // Top-left
       ctx.fillRect(0, 0, c, 1);
       ctx.fillRect(0, 0, 1, c);
+      // Top-right
       ctx.fillRect(W - c, 0, c, 1);
       ctx.fillRect(W - 1, 0, 1, c);
+      // Bottom-right
       ctx.fillRect(W - c, W - 1, c, 1);
       ctx.fillRect(W - 1, W - c, 1, c);
+      // Bottom-left
       ctx.fillRect(0, W - 1, c, 1);
       ctx.fillRect(0, W - c, 1, c);
 
-      // Inner dashes
+      // Draw exactly dashCount (5) inner dashes on all 4 sides
       for (let i = 0; i < dashCount; i++) {
         const startUnit = cornerUnit + gapUnit + i * (dashUnit + gapUnit);
         const pos = Math.round(startUnit * scale);
+        // Top edge
         ctx.fillRect(pos, 0, dashLenPx, 1);
+        // Bottom edge
         ctx.fillRect(pos, W - 1, dashLenPx, 1);
+        // Left edge
         ctx.fillRect(0, pos, 1, dashLenPx);
+        // Right edge
         ctx.fillRect(W - 1, pos, 1, dashLenPx);
       }
 
@@ -5023,6 +5011,7 @@ YANGIHAYOT MFY
         }
 
         if (isCurrent && isFlagged) {
+          // Both Current pin and For Review red bookmark side-by-side above the top border
           const dualBadge = document.createElement('span');
           dualBadge.className = 'absolute -top-[14px] left-0 right-0 flex items-center justify-between px-[0.5px] pointer-events-none z-20';
           dualBadge.innerHTML = `
@@ -5115,7 +5104,7 @@ YANGIHAYOT MFY
         backBtn.classList.remove('hidden');
       }
 
-      // Mark for Review UI
+      // Mark for Review UI: Red filled bookmark with black border + bold black underlined text when active
       const isFlagged = state.flagged[currentQuestionIdx];
       const flagIcon = document.getElementById('markForReviewIcon');
       const flagText = document.getElementById('markForReviewText');
@@ -5299,6 +5288,10 @@ YANGIHAYOT MFY
     // =========================================================================
     // MODULE OVER & PRACTICE BREAK LOGIC (00:47 & 00:55 - 00:58)
     // =========================================================================
+    let breakTimerSeconds = 10 * 60;
+    let breakTimerInterval = null;
+    let breakNotificationActive = false;
+
     function triggerModuleOverTransition() {
       if (examTimerInterval) clearInterval(examTimerInterval);
       showAppView('screenModuleOver');
@@ -5449,10 +5442,18 @@ YANGIHAYOT MFY
         renderCheckYourWorkGrid();
       }
     });
+  </script>
 
+  <script>
     // =========================================================================
-    // LOGIN SCREEN & IDENTITY MANAGEMENT
+    // LOGIN SCREEN (from original project) + sign-in / sign-out wiring
     // =========================================================================
+    // =========================================================================
+    // BLUEBOOK LOGIN SCREEN LOGIC (Image 1 & Image 3)
+    // =========================================================================
+    let authToken = null;
+    let authenticatedUser = null;
+    let studentLoginPending = false;
     function showLoginCard(cardType) {
       const selectCard = document.getElementById('loginCardSelect');
       const studentCard = document.getElementById('loginCardStudent');
@@ -5670,6 +5671,7 @@ YANGIHAYOT MFY
       if (e.target === testModal) closeTestDeviceModal();
       if (e.target === helpModal) closeHelpModal();
     });
-</script>
+
+  </script>
 </body>
 </html>

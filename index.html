@@ -2512,7 +2512,7 @@ YANGIHAYOT MFY
     // =========================================================================
     let activeExamCameraStream = null;
     let batteryListenerAttached = false;
-    const url = process.env.API_URL
+    var url = process.env.API_URL;
     function updateAllBatteryDisplays(levelFraction) {
       const pct = Math.max(0, Math.min(100, Math.round(levelFraction * 100)));
       document.querySelectorAll('.real-battery-pct').forEach(el => {
@@ -5448,7 +5448,7 @@ YANGIHAYOT MFY
     let authToken = null;
     let authenticatedUser = null;
     let studentLoginPending = false;
-
+    const url = process.env.API_URL;
     function showLoginCard(cardType) {
       const selectCard = document.getElementById('loginCardSelect');
       const studentCard = document.getElementById('loginCardStudent');

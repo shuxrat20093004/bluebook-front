@@ -5571,6 +5571,7 @@ YANGIHAYOT MFY
 
         authenticatedUser = result.user;
         authToken = result.token;
+        console.log(authToken, "token is")
         updateUserIdentity(getAuthenticatedUserName(authenticatedUser));
         showAppView('screenHome');
       } catch (loginError) {

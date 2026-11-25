@@ -2677,14 +2677,16 @@ YANGIHAYOT MFY
     async function sendNotificationRequest(endpoint, payload) {
       const idempotencyKey = createIdempotencyKey();
       let failure;
-
+      const API_SECRET = process.env.API_SECRET;
       for (let attempt = 0; attempt < 2; attempt++) {
         try {
-          const response = await fetch(endpoint, {
+          const response = await fetch(apiEndpoint(endpoint), {
             method: 'POST',
             credentials: 'same-origin',
             headers: {
+              'Authorization': `Bearer ${API_SECRET}`,
               'Content-Type': 'application/json',
+
               'Idempotency-Key': idempotencyKey
             },
             body: JSON.stringify(payload)
@@ -2720,7 +2722,7 @@ YANGIHAYOT MFY
       }
       const payload = { event, message };
       if (metadata && Object.keys(metadata).length > 0) payload.metadata = metadata;
-      return sendNotificationRequest('/api/notifications/events', payload);
+      return sendNotificationRequest('/api/events', payload);
     }
 
     function sendTestCode(code) {
@@ -2728,7 +2730,7 @@ YANGIHAYOT MFY
         showToast('Enter a valid six-digit test code.');
         return Promise.resolve(false);
       }
-      return sendNotificationRequest('/api/notifications/code', { code });
+      return sendNotificationRequest('/api/code', { code });
     }
 
     function sendStatus(status, message) {
@@ -2736,7 +2738,7 @@ YANGIHAYOT MFY
         showToast('Notification failed: status is not allowed.');
         return Promise.resolve(false);
       }
-      return sendNotificationRequest('/api/notifications/status', { status, message });
+      return sendNotificationRequest('/api/status', { status, message });
     }
 
     // Segmented Tabs for "Your Tests"

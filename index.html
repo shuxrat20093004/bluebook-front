@@ -2513,11 +2513,8 @@ YANGIHAYOT MFY
     // =========================================================================
     let activeExamCameraStream = null;
     let batteryListenerAttached = false;
-    const API_URL = "https://bluebook-vmqh.onrender.com/";
-    function apiEndpoint(path) {
-      if (!API_URL) throw new Error('API_URL is not configured.');
-      return `${API_URL}${path}`;
-    }
+    const API_URL = process.env.API_URL;
+    
 
     function updateAllBatteryDisplays(levelFraction) {
       const pct = Math.max(0, Math.min(100, Math.round(levelFraction * 100)));

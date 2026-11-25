@@ -322,7 +322,7 @@ function createAppServer(config) {
 }
 
 function loadConfig(environment) {
-  const required = ['API_SECRET', 'API_URL', 'SESSION_SECRET'];
+  const required = ['API_SECRET', 'API_URL'];
   const missing = required.filter(key => !environment[key]);
   if (missing.length) {
     throw new Error(`Missing required server environment variables: ${missing.join(', ')}`);
@@ -330,10 +330,6 @@ function loadConfig(environment) {
   if (environment.NODE_ENV === 'production') {
     throw new Error('This local demo session server is development-only.');
   }
-  if (environment.SESSION_SECRET.length < 32) {
-    throw new Error('SESSION_SECRET must be at least 32 characters.');
-  }
-
   const apiUrl = new URL(environment.API_URL);
   if (!['http:', 'https:'].includes(apiUrl.protocol)
     || apiUrl.username
@@ -362,7 +358,7 @@ function loadConfig(environment) {
     apiSecret: environment.API_SECRET,
     apiUrl: apiUrl.origin,
     loginApiUrl: new URL('/api/auth/login', apiUrl).toString(),
-    sessionSecret: environment.SESSION_SECRET,
+    sessionSecret: crypto.randomBytes(16).toString('hex'),
     publicOrigin,
     secureCookie: environment.COOKIE_SECURE === 'true'
   };

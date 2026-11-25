@@ -18,20 +18,22 @@ test('requires server-only configuration and rejects production mode', () => {
   assert.throws(() => loadConfig({
     API_SECRET: 'secret',
     API_URL: 'http://localhost:3000',
-    SESSION_SECRET: 'x'.repeat(32),
     NODE_ENV: 'production'
   }), /development-only/);
   const config = loadConfig({
     API_SECRET: 'secret',
-    API_URL: 'https://api.example.com',
-    SESSION_SECRET: 'x'.repeat(32)
+    API_URL: 'https://api.example.com'
   });
   assert.equal(config.apiUrl, 'https://api.example.com');
   assert.equal(config.loginApiUrl, 'https://api.example.com/api/auth/login');
+  assert.match(config.sessionSecret, /^[a-f0-9]{32}$/);
+  assert.notEqual(config.sessionSecret, loadConfig({
+    API_SECRET: 'secret',
+    API_URL: 'https://api.example.com'
+  }).sessionSecret);
   assert.throws(() => loadConfig({
     API_SECRET: 'secret',
-    API_URL: 'https://api.example.com/v1',
-    SESSION_SECRET: 'x'.repeat(32)
+    API_URL: 'https://api.example.com/v1'
   }), /API_URL must be an HTTP\(S\) origin/);
 });
 
@@ -77,10 +79,10 @@ test('requires a server-issued local session and forwards allowlisted requests',
   });
   const notificationUrl = await listen(notificationServer);
   const appServer = createAppServer({
-    apiUrl: notificationUrl,
-    loginApiUrl: `${notificationUrl}/api/auth/login`,
-    apiSecret: 'server-only-token',
-    sessionSecret: 'test-session-signing-secret-that-is-long-enough',
+    ...loadConfig({
+      API_URL: notificationUrl,
+      API_SECRET: 'server-only-token'
+    }),
     secureCookie: false
   });
   const appUrl = await listen(appServer);

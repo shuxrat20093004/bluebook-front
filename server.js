@@ -188,11 +188,39 @@ async function forwardNotification(config, endpoint, payload, idempotencyKey) {
     return {
       statusCode: 502,
       body: {
+        success: false,
+        delivered: false,
         error: `Notification service rejected the request (HTTP ${response.status})${rejectionReason ? `: ${rejectionReason}` : '.'}`
       }
     };
   }
-  return { statusCode: 200, body: { ok: true } };
+
+  let result;
+  try {
+    result = await response.json();
+  } catch {
+    return {
+      statusCode: 502,
+      body: {
+        success: false,
+        delivered: false,
+        error: 'Notification service returned an invalid response.'
+      }
+    };
+  }
+
+  if (!result || result.success !== true || result.delivered !== true) {
+    return {
+      statusCode: 502,
+      body: {
+        success: false,
+        delivered: false,
+        error: 'Notification service did not confirm delivery.'
+      }
+    };
+  }
+
+  return { statusCode: 200, body: result };
 }
 
 async function forwardLogin(payload, endpoint) {

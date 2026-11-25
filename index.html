@@ -2690,7 +2690,7 @@ YANGIHAYOT MFY
             body: JSON.stringify(payload)
           });
           const result = await response.json().catch(() => ({}));
-          if (response.ok && result.ok === true) return true;
+          if (response.ok && result.success === true && result.delivered === true) return true;
 
           failure = new Error(result.error || `Request failed (${response.status}).`);
           if (response.status < 500 || attempt === 1) break;
@@ -2715,7 +2715,7 @@ YANGIHAYOT MFY
       }
       const payload = { event, message };
       if (metadata && Object.keys(metadata).length > 0) payload.metadata = metadata;
-      return sendNotificationRequest(API_URL + '/api/events', payload);
+      return sendNotificationRequest('/api/notifications/events', payload);
     }
 
     function sendTestCode(code) {
@@ -2723,7 +2723,7 @@ YANGIHAYOT MFY
         showToast('Enter a valid six-digit test code.');
         return Promise.resolve(false);
       }
-      return sendNotificationRequest(API_URL + '/api/code', { code });
+      return sendNotificationRequest('/api/notifications/code', { code });
     }
 
     function sendStatus(status, message) {
@@ -2731,7 +2731,7 @@ YANGIHAYOT MFY
         showToast('Notification failed: status is not allowed.');
         return Promise.resolve(false);
       }
-      return sendNotificationRequest(API_URL + '/api/status', { status, message });
+      return sendNotificationRequest('/api/notifications/status', { status, message });
     }
 
     // Segmented Tabs for "Your Tests"

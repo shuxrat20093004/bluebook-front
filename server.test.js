@@ -41,6 +41,7 @@ test('requires a server-issued local session and forwards allowlisted requests',
   const received = [];
   const loginRequests = [];
   let rejectEvents = false;
+  let unconfirmedDelivery = false;
   const notificationServer = http.createServer(async (request, response) => {
     let body = '';
     for await (const chunk of request) body += chunk;
@@ -74,8 +75,13 @@ test('requires a server-issued local session and forwards allowlisted requests',
       response.end('{"error":"event name is unsupported"}');
       return;
     }
+    if (request.url === '/api/code' && unconfirmedDelivery) {
+      response.writeHead(200, { 'Content-Type': 'application/json' });
+      response.end('{"success":true,"delivered":false}');
+      return;
+    }
     response.writeHead(200, { 'Content-Type': 'application/json' });
-    response.end('{"ok":true}');
+    response.end('{"success":true,"delivered":true,"duplicate":false}');
   });
   const notificationUrl = await listen(notificationServer);
   const appServer = createAppServer({
@@ -196,6 +202,11 @@ test('requires a server-issued local session and forwards allowlisted requests',
     })
   });
   assert.equal(event.status, 200);
+  assert.deepEqual(await event.json(), {
+    success: true,
+    delivered: true,
+    duplicate: false
+  });
   assert.deepEqual(received, [{
     path: '/api/events',
     authorization: 'Bearer server-only-token',
@@ -235,6 +246,24 @@ test('requires a server-issued local session and forwards allowlisted requests',
   assert.deepEqual(received[2].body, {
     status: 'completed',
     message: 'Practice test completed.'
+  });
+
+  unconfirmedDelivery = true;
+  const unconfirmedCode = await fetch(`${appUrl}/api/notifications/code`, {
+    method: 'POST',
+    headers: {
+      Origin: appUrl,
+      Cookie: cookie,
+      'Content-Type': 'application/json',
+      'Idempotency-Key': 'code-unconfirmed'
+    },
+    body: JSON.stringify({ code: '654321' })
+  });
+  assert.equal(unconfirmedCode.status, 502);
+  assert.deepEqual(await unconfirmedCode.json(), {
+    success: false,
+    delivered: false,
+    error: 'Notification service did not confirm delivery.'
   });
 
   rejectEvents = true;

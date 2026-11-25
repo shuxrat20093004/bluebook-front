@@ -355,8 +355,9 @@ function loadConfig(environment) {
   if (missing.length) {
     throw new Error(`Missing required server environment variables: ${missing.join(', ')}`);
   }
-  if (environment.NODE_ENV === 'production') {
-    throw new Error('This local demo session server is development-only.');
+  if (environment.NODE_ENV === 'production'
+    && environment.ALLOW_PRODUCTION_DEPLOYMENT !== 'true') {
+    throw new Error('This server is development-only unless ALLOW_PRODUCTION_DEPLOYMENT=true.');
   }
   const apiUrl = new URL(environment.API_URL);
   if (!['http:', 'https:'].includes(apiUrl.protocol)
@@ -381,6 +382,9 @@ function loadConfig(environment) {
     }
     publicOrigin = parsedOrigin.origin;
   }
+  if (environment.NODE_ENV === 'production' && !publicOrigin) {
+    throw new Error('APP_PUBLIC_ORIGIN is required in production.');
+  }
 
   return {
     apiSecret: environment.API_SECRET,
@@ -388,24 +392,25 @@ function loadConfig(environment) {
     loginApiUrl: new URL('/api/auth/login', apiUrl).toString(),
     sessionSecret: crypto.randomBytes(16).toString('hex'),
     publicOrigin,
-    secureCookie: environment.COOKIE_SECURE === 'true'
+    secureCookie: environment.COOKIE_SECURE === 'true' || environment.NODE_ENV === 'production'
   };
 }
 
 if (require.main === module) {
   try {
     const config = loadConfig(process.env);
-    const host = process.env.APP_HOST || '127.0.0.1';
-    const port = Number(process.env.APP_PORT || 3001);
-    if (!['127.0.0.1', '::1', 'localhost'].includes(host)) {
-      throw new Error('APP_HOST must be a loopback address for development-only authentication.');
+    const isProduction = process.env.NODE_ENV === 'production';
+    const host = process.env.APP_HOST || (isProduction ? '0.0.0.0' : '127.0.0.1');
+    const port = Number(process.env.PORT || process.env.APP_PORT || 3001);
+    if (!isProduction && !['127.0.0.1', '::1', 'localhost'].includes(host)) {
+      throw new Error('APP_HOST must be a loopback address during development.');
     }
     if (!Number.isInteger(port) || port < 1 || port > 65535) {
-      throw new Error('APP_PORT must be a valid TCP port.');
+      throw new Error('PORT or APP_PORT must be a valid TCP port.');
     }
 
     createAppServer(config).listen(port, host, () => {
-      console.log(`Bluebook development app listening at http://${host}:${port}`);
+      console.log(`Bluebook app listening at http://${host}:${port}`);
     });
   } catch (error) {
     console.error(error.message);

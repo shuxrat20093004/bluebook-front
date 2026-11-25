@@ -1,15 +1,17 @@
-# Development API integration
+# API integration and deployment
 
-The static frontend sends login requests to `API_URL/api/auth/login` and notifications to `API_URL/api/events`, `API_URL/api/code`, and `API_URL/api/status`. The deployed backend must expose these notification endpoints to browser requests and allow the app's origin through CORS. Do not put `API_SECRET` in browser code; if the backend requires a secret, route notifications through a production server-side proxy instead. The Node server in this repository is development-only and must not be exposed to a network or deployed.
+Deploy this app as a Render Web Service, not a static site. The Node server serves the frontend and receives same-origin notification requests, then forwards them to the existing backend routes `API_URL/api/events`, `API_URL/api/code`, and `API_URL/api/status` with the server-only `API_SECRET`. The frontend login destination remains `https://bluebook-vmqh.onrender.com/api/auth/login`; do not put `API_SECRET` in browser code.
 
 Set these variables in the server process environment:
 
 - `API_URL` — backend origin, for example `http://localhost:3000`
 - `API_SECRET` — bearer token for the notification backend
-- `APP_PORT` — optional app port; defaults to `3001` because the notification backend uses `3000`
-- `APP_HOST` — optional loopback bind host; defaults to `127.0.0.1`
-- `APP_PUBLIC_ORIGIN` — optional exact browser origin when a trusted local HTTPS reverse proxy is used
-- `COOKIE_SECURE` — set to `true` only when serving the app over HTTPS
+- `NODE_ENV` — set to `production` on Render
+- `ALLOW_PRODUCTION_DEPLOYMENT` — set to `true` for the intentional production deployment
+- `APP_PUBLIC_ORIGIN` — exact public origin of the deployed app, e.g. `https://your-service.onrender.com`
+- `PORT` — supplied by Render; local development can use `APP_PORT` (defaults to `3001`)
+- `APP_HOST` — optional bind host; defaults to `0.0.0.0` in production and `127.0.0.1` locally
+- `COOKIE_SECURE` — optional locally; production cookies are always Secure
 
 For example, in PowerShell:
 
@@ -19,7 +21,9 @@ $env:API_SECRET = "<notification backend secret>"
 node server.js
 ```
 
-The Node server generates a fresh 32-character cryptographically random session secret on startup; it is not read from an environment variable. Existing sessions are invalidated when the server restarts. Then open `http://127.0.0.1:3001`. The server binds to loopback only. The development server writes the public API base URL to `/runtime-config.js`, proxies student login to `API_URL/api/auth/login`, and proxies notification requests to `API_URL/api/events`, `API_URL/api/code`, and `API_URL/api/status` with the server-only `API_SECRET`.
+For Render, create a Web Service with build command `node --check server.js`, start command `npm start`, and configure the environment variables above. Set `API_URL` to the existing backend origin `https://bluebook-vmqh.onrender.com`; the upstream API paths are unchanged. The service must be the same origin serving the frontend so the browser's session cookie reaches the notification proxy.
+
+For local development, set `API_URL` and `API_SECRET`, run `node server.js`, then open `http://127.0.0.1:3001`. The server writes the public API base URL to `/runtime-config.js` and proxies notification requests with the server-only `API_SECRET`.
 
 The proxy allows only the configured test lifecycle, break, and subject-module events; module metadata is limited to section/module numbers. Notification requests use an `Idempotency-Key`, and the frontend retries transient failures with the same key. Failures are shown in the app toast.
 

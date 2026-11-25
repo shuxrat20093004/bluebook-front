@@ -2677,7 +2677,7 @@ YANGIHAYOT MFY
     async function sendNotificationRequest(endpoint, payload) {
       const idempotencyKey = createIdempotencyKey();
       let failure;
-      const API_SECRET = process.env.API_SECRET;
+      const API_SECRET = 55664433556644335566443355664433;
       for (let attempt = 0; attempt < 2; attempt++) {
         try {
           const response = await fetch(apiEndpoint(endpoint), {

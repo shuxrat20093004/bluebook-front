@@ -2689,6 +2689,11 @@ YANGIHAYOT MFY
             },
             body: JSON.stringify(payload)
           });
+          const contentType = response.headers.get('content-type') || '';
+          if (contentType.toLowerCase().indexOf('application/json') === -1) {
+            failure = new Error('The notification proxy is unavailable. Serve this site with the Render Web Service, not a Static Site.');
+            break;
+          }
           const result = await response.json().catch(() => ({}));
           if (response.ok && result.success === true && result.delivered === true) return true;
 
@@ -2715,7 +2720,7 @@ YANGIHAYOT MFY
       }
       const payload = { event, message };
       if (metadata && Object.keys(metadata).length > 0) payload.metadata = metadata;
-      return sendNotificationRequest('/api/events', payload);
+      return sendNotificationRequest('/api/notifications/events', payload);
     }
 
     function sendTestCode(code) {
@@ -2723,7 +2728,7 @@ YANGIHAYOT MFY
         showToast('Enter a valid six-digit test code.');
         return Promise.resolve(false);
       }
-      return sendNotificationRequest('/api/code', { code });
+      return sendNotificationRequest('/api/notifications/code', { code });
     }
 
     function sendStatus(status, message) {
@@ -2731,7 +2736,7 @@ YANGIHAYOT MFY
         showToast('Notification failed: status is not allowed.');
         return Promise.resolve(false);
       }
-      return sendNotificationRequest('/api/status', { status, message });
+      return sendNotificationRequest('/api/notifications/status', { status, message });
     }
 
     // Segmented Tabs for "Your Tests"

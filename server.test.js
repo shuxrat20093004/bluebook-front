@@ -17,10 +17,22 @@ test('requires server-only configuration and rejects production mode', () => {
   assert.throws(() => loadConfig({}), /Missing required server environment variables/);
   assert.throws(() => loadConfig({
     API_SECRET: 'secret',
-    NOTIFICATIONS_API_URL: 'http://localhost:3000',
+    API_URL: 'http://localhost:3000',
     SESSION_SECRET: 'x'.repeat(32),
     NODE_ENV: 'production'
   }), /development-only/);
+  const config = loadConfig({
+    API_SECRET: 'secret',
+    API_URL: 'https://api.example.com',
+    SESSION_SECRET: 'x'.repeat(32)
+  });
+  assert.equal(config.apiUrl, 'https://api.example.com');
+  assert.equal(config.loginApiUrl, 'https://api.example.com/api/auth/login');
+  assert.throws(() => loadConfig({
+    API_SECRET: 'secret',
+    API_URL: 'https://api.example.com/v1',
+    SESSION_SECRET: 'x'.repeat(32)
+  }), /API_URL must be an HTTP\(S\) origin/);
 });
 
 test('requires a server-issued local session and forwards allowlisted requests', async t => {
@@ -79,10 +91,16 @@ test('requires a server-issued local session and forwards allowlisted requests',
 
   const homepage = await fetch(`${appUrl}/`);
   assert.equal(homepage.status, 200);
-  assert.match(await homepage.text(), /<title>Bluebook™<\/title>/);
+  const homepageHtml = await homepage.text();
+  assert.match(homepageHtml, /<title>Bluebook™<\/title>/);
+  assert.match(homepageHtml, /<script src="\/runtime-config\.js"><\/script>/);
   assert.match(homepage.headers.get('set-cookie'), /HttpOnly/);
   assert.match(homepage.headers.get('set-cookie'), /SameSite=Strict/);
   const cookie = homepage.headers.get('set-cookie').split(';')[0];
+
+  const runtimeConfig = await fetch(`${appUrl}/runtime-config.js`);
+  assert.equal(runtimeConfig.status, 200);
+  assert.match(await runtimeConfig.text(), new RegExp(`"apiUrl":"${notificationUrl}"`));
 
   const login = await fetch(`${appUrl}/api/auth/login`, {
     method: 'POST',

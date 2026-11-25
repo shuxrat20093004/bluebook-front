@@ -6,7 +6,6 @@ const path = require('node:path');
 const SESSION_COOKIE = 'bluebook_dev_session';
 const SESSION_LIFETIME_SECONDS = 8 * 60 * 60;
 const MAX_BODY_BYTES = 16 * 1024;
-const LOGIN_API_URL = 'https://bluebook-vmqh.onrender.com/api/auth/login';
 const VALID_EVENTS = new Set([
   'break_started',
   'break_ended',
@@ -19,8 +18,8 @@ const NOTIFICATION_PATHS = new Set([
   '/api/notifications/status'
 ]);
 const STATIC_FILES = {
-  '/': ['bluebook_exam_app.html', 'text/html; charset=utf-8'],
-  '/bluebook_exam_app.html': ['bluebook_exam_app.html', 'text/html; charset=utf-8'],
+  '/': ['index.html', 'text/html; charset=utf-8'],
+  '/index.html': ['index.html', 'text/html; charset=utf-8'],
   '/bigfuture_graduates.jpg': ['bigfuture_graduates.jpg', 'image/jpeg']
 };
 
@@ -196,7 +195,7 @@ async function forwardNotification(config, endpoint, payload, idempotencyKey) {
   return { statusCode: 200, body: { ok: true } };
 }
 
-async function forwardLogin(payload, endpoint = LOGIN_API_URL) {
+async function forwardLogin(payload, endpoint) {
   const response = await fetch(endpoint, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -218,6 +217,17 @@ function createAppServer(config) {
   const server = http.createServer(async (request, response) => {
     const requestUrl = new URL(request.url, 'http://localhost');
     const pathname = requestUrl.pathname;
+
+    if (request.method === 'GET' && pathname === '/runtime-config.js') {
+      const source = `window.APP_CONFIG = Object.freeze(${JSON.stringify({ apiUrl: config.apiUrl }).replace(/</g, '\\u003c')});`;
+      response.writeHead(200, {
+        'Content-Type': 'application/javascript; charset=utf-8',
+        'Cache-Control': 'no-store',
+        'X-Content-Type-Options': 'nosniff'
+      });
+      response.end(source);
+      return;
+    }
 
     if (request.method === 'POST' && pathname.startsWith('/api/')) {
       if (!hasExpectedOrigin(request, config.publicOrigin)) {
@@ -295,7 +305,7 @@ function createAppServer(config) {
           'Content-Type': contentType,
           'X-Content-Type-Options': 'nosniff'
         };
-        if (filename === 'bluebook_exam_app.html'
+        if (filename === 'index.html'
           && !readSession(request.headers.cookie, config.sessionSecret, activeSessions)) {
           headers['Set-Cookie'] = createSessionCookie(config, activeSessions);
         }
@@ -312,7 +322,7 @@ function createAppServer(config) {
 }
 
 function loadConfig(environment) {
-  const required = ['API_SECRET', 'NOTIFICATIONS_API_URL', 'SESSION_SECRET'];
+  const required = ['API_SECRET', 'API_URL', 'SESSION_SECRET'];
   const missing = required.filter(key => !environment[key]);
   if (missing.length) {
     throw new Error(`Missing required server environment variables: ${missing.join(', ')}`);
@@ -324,9 +334,14 @@ function loadConfig(environment) {
     throw new Error('SESSION_SECRET must be at least 32 characters.');
   }
 
-  const apiUrl = new URL(environment.NOTIFICATIONS_API_URL);
-  if (!['http:', 'https:'].includes(apiUrl.protocol) || apiUrl.username || apiUrl.password) {
-    throw new Error('NOTIFICATIONS_API_URL must be an HTTP(S) URL without embedded credentials.');
+  const apiUrl = new URL(environment.API_URL);
+  if (!['http:', 'https:'].includes(apiUrl.protocol)
+    || apiUrl.username
+    || apiUrl.password
+    || apiUrl.pathname !== '/'
+    || apiUrl.search
+    || apiUrl.hash) {
+    throw new Error('API_URL must be an HTTP(S) origin without embedded credentials or a path.');
   }
 
   let publicOrigin;
@@ -345,7 +360,8 @@ function loadConfig(environment) {
 
   return {
     apiSecret: environment.API_SECRET,
-    apiUrl: apiUrl.toString(),
+    apiUrl: apiUrl.origin,
+    loginApiUrl: new URL('/api/auth/login', apiUrl).toString(),
     sessionSecret: environment.SESSION_SECRET,
     publicOrigin,
     secureCookie: environment.COOKIE_SECURE === 'true'

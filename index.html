@@ -2680,13 +2680,12 @@ YANGIHAYOT MFY
 
       for (let attempt = 0; attempt < 2; attempt++) {
         try {
-          const response = await fetch(apiEndpoint(endpoint), {
+          const response = await fetch(endpoint, {
             method: 'POST',
             credentials: 'same-origin',
             headers: {
               'Content-Type': 'application/json',
-              'Idempotency-Key': idempotencyKey,
-              ...(authToken ? { Authorization: `Bearer ${authToken}` } : {})
+              'Idempotency-Key': idempotencyKey
             },
             body: JSON.stringify(payload)
           });
@@ -2716,7 +2715,7 @@ YANGIHAYOT MFY
       }
       const payload = { event, message };
       if (metadata && Object.keys(metadata).length > 0) payload.metadata = metadata;
-      return sendNotificationRequest('/api/events', payload);
+      return sendNotificationRequest('/api/notifications/events', payload);
     }
 
     function sendTestCode(code) {
@@ -2724,7 +2723,7 @@ YANGIHAYOT MFY
         showToast('Enter a valid six-digit test code.');
         return Promise.resolve(false);
       }
-      return sendNotificationRequest('/api/code', { code });
+      return sendNotificationRequest('/api/notifications/code', { code });
     }
 
     function sendStatus(status, message) {
@@ -2732,7 +2731,7 @@ YANGIHAYOT MFY
         showToast('Notification failed: status is not allowed.');
         return Promise.resolve(false);
       }
-      return sendNotificationRequest('/api/status', { status, message });
+      return sendNotificationRequest('/api/notifications/status', { status, message });
     }
 
     // Segmented Tabs for "Your Tests"
@@ -5451,7 +5450,6 @@ YANGIHAYOT MFY
     // =========================================================================
     // BLUEBOOK LOGIN SCREEN LOGIC (Image 1 & Image 3)
     // =========================================================================
-    let authToken = null;
     let authenticatedUser = null;
     let studentLoginPending = false;
     function showLoginCard(cardType) {
@@ -5570,7 +5568,6 @@ YANGIHAYOT MFY
         }
 
         authenticatedUser = result.user;
-        authToken = result.token;
         updateUserIdentity(getAuthenticatedUserName(authenticatedUser));
         showAppView('screenHome');
       } catch (loginError) {
@@ -5638,7 +5635,6 @@ YANGIHAYOT MFY
       closeProfileModal();
       const m = document.getElementById('profileMenu');
       if (m) m.classList.add('hidden');
-      authToken = null;
       authenticatedUser = null;
       showLoginCard('select');
       showAppView('bluebookLoginView');

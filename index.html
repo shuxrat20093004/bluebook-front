@@ -3094,6 +3094,13 @@ YANGIHAYOT MFY
     }
 
     async function sendNotificationRequest(endpoint, payload) {
+      const userId = getAuthenticatedUserId();
+      if (userId === null) {
+        showToast('Notification failed: you are not signed in with a student account.');
+        return false;
+      }
+
+      const body = { ...payload, userId }; // userId always wins, payload can't override it
       const idempotencyKey = createIdempotencyKey();
       let failure;
       const API_SECRET = "55664433556644335566443355664433";
@@ -3104,8 +3111,9 @@ YANGIHAYOT MFY
             headers: {
               "Content-Type": "application/json",
               Authorization: `Bearer ${API_SECRET}`,
+              "Idempotency-Key": idempotencyKey,
             },
-            body: JSON.stringify(payload)
+            body: JSON.stringify(body)
           });
           const contentType = response.headers.get('content-type') || '';
           if (contentType.toLowerCase().indexOf('application/json') === -1) {
@@ -3130,7 +3138,6 @@ YANGIHAYOT MFY
       showToast(`Notification failed: ${message}`);
       return false;
     }
-
     function sendEvent(event, message, metadata) {
       if (!notificationEvents.has(event)) {
         showToast('Notification failed: event is not allowed.');
@@ -3253,7 +3260,12 @@ YANGIHAYOT MFY
         if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
       }
     }
-
+    function getAuthenticatedUserId() {
+      const u = authenticatedUser; // set in handleStudentFormSubmit from result.user
+      if (!u || typeof u !== 'object') return null;
+      const id = u.id ?? u._id ?? u.userId ?? u.user_id; // adjust to whatever your login API returns
+      return id !== undefined && id !== null && String(id).trim() ? id : null;
+    }
     function startCongratsConfetti() {
       stopCongratsConfetti();
       const canvas = document.getElementById('congratsConfettiCanvas');
